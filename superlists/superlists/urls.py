@@ -19,5 +19,7 @@ from lists import views
 
 urlpatterns = [
     path('', views.home_page, name='home'),
+    #path("lists/the-only-list-in-the-world/", views.home_page, name="view_list"),  # เพิ่มบรรทัดนี้
+    path("lists/the-only-list-in-the-world/", views.view_list, name="view_list"), # เปลี่ยนเป็นเรียก view_list
     path('about/', views.about_page, name='about'),
 ]

@@ -2,10 +2,10 @@ from django.test import LiveServerTestCase
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
-from selenium.common.exceptions import WebDriverException # <--- 1. เพิ่มตัวนี้
+from selenium.common.exceptions import WebDriverException
 import time
 
-MAX_WAIT = 10  # <--- 2. ตั้งเวลา "ตื๊อ" สูงสุด (วินาที)
+MAX_WAIT = 10
 
 class NewVisitorTest(LiveServerTestCase):
 
@@ -15,44 +15,93 @@ class NewVisitorTest(LiveServerTestCase):
     def tearDown(self):
         self.browser.quit()
 
-    # 3. เปลี่ยนชื่อฟังก์ชันเป็น wait_for... และเพิ่ม Logic การรอ
     def wait_for_row_in_list_table(self, row_text):
         start_time = time.time()
-        while True:  # <--- วนลูปไม่รู้จบ
+        while True:
             try:
                 table = self.browser.find_element(By.ID, 'id_list_table')
                 rows = table.find_elements(By.TAG_NAME, 'tr')
                 self.assertIn(row_text, [row.text for row in rows])
-                return  # <--- ถ้าเจอแล้ว ให้จบฟังก์ชันทันที (Success)
+                return
             except (AssertionError, WebDriverException) as e:
-                # ถ้ายังไม่เจอ หรือหาตารางไม่ได้
                 if time.time() - start_time > MAX_WAIT:
-                    raise e  # <--- ถ้าเกินเวลาที่กำหนดแล้ว ให้ยอมแพ้ (Fail)
-                time.sleep(0.5)  # <--- ถ้ายังไม่ครบเวลา ให้พัก 0.5 วิ แล้ววนไปลองใหม่
+                    raise e
+                time.sleep(0.5)
 
-    def test_can_start_a_list_and_retrieve_it_later(self):
+    def test_can_start_a_list_for_one_user(self):
+        # Edith ได้ยินมาว่ามีเว็บ to-do list ใหม่ที่เจ๋งมาก
+        # เธอเลยไปเช็คดูที่หน้า homepage
         self.browser.get(self.live_server_url)
 
+        # เธอสังเกตเห็นว่า title และ header ของหน้าเว็บระบุว่าเป็น to-do lists
         self.assertIn('To-Do', self.browser.title)
         header_text = self.browser.find_element(By.TAG_NAME, 'h1').text
         self.assertIn('To-Do', header_text)
 
+        # เธอถูกชวนให้กรอก to-do item ทันที
         inputbox = self.browser.find_element(By.ID, 'id_new_item')
         self.assertEqual(
             inputbox.get_attribute('placeholder'),
             'Enter a to-do item'
         )
 
+        # เธอพิมพ์ "Buy peacock feathers" (ซื้อขนยูง)
         inputbox.send_keys('Buy peacock feathers')
+
+        # เมื่อเธอกด enter, หน้าเว็บจะ update
+        # และตอนนี้หน้าเว็บโชว์รายการ "1: Buy peacock feathers"
         inputbox.send_keys(Keys.ENTER)
-        
-        # 4. ลบ time.sleep() ทิ้งไปเลย! แล้วเรียกฟังก์ชันใหม่แทน
         self.wait_for_row_in_list_table('1: Buy peacock feathers')
 
+        # เธอพิมพ์รายการเพิ่ม "Use peacock feathers to make a fly"
         inputbox = self.browser.find_element(By.ID, 'id_new_item')
         inputbox.send_keys('Use peacock feathers to make a fly')
         inputbox.send_keys(Keys.ENTER)
-        
-        # 5. ลบ time.sleep() ทิ้งอีกจุด
-        self.wait_for_row_in_list_table('1: Buy peacock feathers')
+
+        # หน้าเว็บ update อีกครั้ง และตอนนี้โชว์ทั้งสองรายการ
         self.wait_for_row_in_list_table('2: Use peacock feathers to make a fly')
+        self.wait_for_row_in_list_table('1: Buy peacock feathers')
+
+        # เธอพอใจแล้วก็เข้านอน
+
+    def test_multiple_users_can_start_lists_at_different_urls(self):
+        # Edith เริ่ม list ใหม่
+        self.browser.get(self.live_server_url)
+        inputbox = self.browser.find_element(By.ID, 'id_new_item')
+        inputbox.send_keys('Buy peacock feathers')
+        inputbox.send_keys(Keys.ENTER)
+        self.wait_for_row_in_list_table('1: Buy peacock feathers')
+
+        # สังเกตว่า list มี URL ที่ไม่เหมือนใคร
+        edith_list_url = self.browser.current_url
+        self.assertRegex(edith_list_url, '/lists/.+')
+
+        # ตอนนี้มีผู้ใช้ใหม่ชื่อ Francis เข้ามาที่เว็บ
+
+        ## เราใช้ browser session ใหม่ เพื่อให้มั่นใจว่าข้อมูลของ Edith
+        ## จะไม่หลุดมาจาก cookies ฯลฯ
+        self.browser.quit()
+        self.browser = webdriver.Chrome()
+
+        # Francis เข้ามาหน้าแรก
+        # เขาไม่เห็น list ของ Edith
+        self.browser.get(self.live_server_url)
+        page_text = self.browser.find_element(By.TAG_NAME, 'body').text
+        self.assertNotIn('Buy peacock feathers', page_text)
+        self.assertNotIn('make a fly', page_text)
+
+        # Francis เริ่ม list ใหม่โดยการกรอกข้อมูล
+        inputbox = self.browser.find_element(By.ID, 'id_new_item')
+        inputbox.send_keys('Buy milk')
+        inputbox.send_keys(Keys.ENTER)
+        self.wait_for_row_in_list_table('1: Buy milk')
+
+        # Francis ได้ URL ที่ไม่เหมือนใคร
+        francis_list_url = self.browser.current_url
+        self.assertRegex(francis_list_url, '/lists/.+')
+        self.assertNotEqual(francis_list_url, edith_list_url)
+
+        # ข้อมูลของ Edith ยังคงไม่โผล่มา
+        page_text = self.browser.find_element(By.TAG_NAME, 'body').text
+        self.assertNotIn('Buy peacock feathers', page_text)
+        self.assertIn('Buy milk', page_text)
