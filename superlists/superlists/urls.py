@@ -14,15 +14,16 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.urls import path
-from lists import views
+from django.urls import path, include
+from lists import views as list_views
 
 urlpatterns = [
-    path('', views.home_page, name='home'),
+    path('', list_views.home_page, name='home'),
     #path("lists/the-only-list-in-the-world/", views.home_page, name="view_list"),  # เพิ่มบรรทัดนี้
     #path("lists/the-only-list-in-the-world/", views.view_list, name="view_list"), # เปลี่ยนเป็นเรียก view_list
-    path("lists/<int:list_id>/", views.view_list, name="view_list"),
-    path("lists/new", views.new_list, name="new_list"),  # เพิ่มบรรทัดนี้
-    path("lists/<int:list_id>/add_item", views.add_item, name="add_item"), # เพิ่มบรรทัดนี้
-    path('about/', views.about_page, name='about'),
+   # path("lists/<int:list_id>/", views.view_list, name="view_list"),
+   # path("lists/new", views.new_list, name="new_list"),  # เพิ่มบรรทัดนี้
+    #path("lists/<int:list_id>/add_item", views.add_item, name="add_item"), # เพิ่มบรรทัดนี้
+    path("lists/", include("lists.urls")),
+    path('about/', list_views.about_page, name='about'),
 ]
