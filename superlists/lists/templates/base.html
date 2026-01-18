@@ -17,10 +17,18 @@
             <h1>{% block header_text %}{% endblock %}</h1>
             
             <form method="POST" action="{% block form_action %}{% endblock %}">
-              <input name="item_text" id="id_new_item" 
-                     class="form-control input-lg" 
-                     placeholder="Enter a to-do item" />
-              {% csrf_token %}
+                <!-- # Added input group for priority selection -->
+              <div class="input-group">   
+                  <select name="priority" class="form-select" style="max-width: 130px;">
+                      <option value="high">High</option>
+                      <option value="medium" selected>Medium</option>
+                      <option value="low">Low</option>
+                  </select>
+                  <input name="item_text" id="id_new_item" 
+                         class="form-control input-lg" 
+                         placeholder="Enter a to-do item" />
+                  {% csrf_token %}
+              </div>
             </form>
           </div>
         </div>
